@@ -2,3 +2,6 @@
 .DS_Store
 node_modules/
 dist/
+
+_json_result/*
+_xml_result/*
