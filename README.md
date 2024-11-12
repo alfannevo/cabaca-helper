@@ -14,4 +14,4 @@ then run
 
 > yarn convert
 
-to convert the json files to WP XML format for Blog Info
+to convert the json files to WP XML format for Blog Info and placed on "_xml_result"
