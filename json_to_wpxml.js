@@ -5,6 +5,9 @@ const xmlbuilder = require('xmlbuilder');
 const jsonFolder = path.resolve(__dirname, '_json_result');
 const xmlFolder = path.resolve(__dirname, '_xml_result');
 
+const postIndex = 1000;
+const mediaIndex = 5000;
+
 // Helper function to convert JSON data to WP XML format
 function convertToWpXml(jsonData) {
     const root = xmlbuilder.create('rss', { version: '1.0', encoding: 'UTF-8' });
@@ -18,24 +21,150 @@ function convertToWpXml(jsonData) {
     const channel = root.ele('channel');
     channel.ele('wp:wxr_version', {}, '1.2');
 
-    jsonData.forEach((item) => {
+    jsonData.forEach((item, index) => {
         const title = item.title || 'No Title';
-        const link = 'https://mamikos.com/info/book/xxx'; // dummy
+        const writerName = item.writer.name || 'Unknown';
+        const itemSlug = createSlug(title + '-' + writerName);
+        const link = `https://mamikos.com/info/book/${itemSlug}`;
         const creator = 'admin';
-        const content = item.chapters[0].content;
+        let content = item.chapters[0].content;
+
+        if (item.chapters[0].title) {
+            content = `<h2 class="cabaca-chapter-title">${item.chapters[0].title}</h2>` + content;
+        }
+
+        const currentDate = Date.now();
 
         const xmlItem = channel.ele('item');
+
         xmlItem.ele('title').cdata(title);
         xmlItem.ele('link', {}, link);
         xmlItem.ele('dc:creator').cdata(creator);
         xmlItem.ele('guid', { 'isPermaLink': true }, link);
         xmlItem.ele('content:encoded').cdata(content);
         xmlItem.ele('description', {}, '');
-        xmlItem.ele('pubDate', {}, new Date(Date.now()).toUTCString());
+        xmlItem.ele('pubDate', {}, new Date(currentDate).toUTCString());
+        xmlItem.ele('excerpt:encoded').cdata('');
+        xmlItem.ele('wp:post_id', {}, (index + postIndex + 1));
+        xmlItem.ele('wp:post_date').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:post_date_gmt').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:post_modified').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:post_modified_gmt').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:comment_status').cdata('closed');
+        xmlItem.ele('wp:ping_status').cdata('closed');
+        xmlItem.ele('wp:post_name').cdata(itemSlug);
+        xmlItem.ele('wp:status').cdata('publish');
+        xmlItem.ele('wp:post_parent', {}, 0);
+        xmlItem.ele('wp:menu_order', {}, 0);
+        xmlItem.ele('wp:post_type').cdata('cb_book');
+        xmlItem.ele('wp:post_password').cdata('');
+        xmlItem.ele('wp:is_sticky', {}, 0);
+        xmlItem.ele('category', { domain: 'cb_author', nicename: createSlug(writerName) }).cdata(writerName);
+        xmlItem.ele('category', { domain: 'cb_type', nicename: bookTypeValue(item.type).slug }).cdata(bookTypeValue(item.type).label);
+
+        const genreList = item.genres.split(',');
+        if (genreList.length > 0) {
+            genreList.forEach(genre => {
+                xmlItem.ele('category', { domain: 'cb_genre', nicename: createSlug(genre) }).cdata(genre);
+            });
+        }
+
+        // postmeta
+        let postMeta = xmlItem.ele('wp:postmeta');
+        postMeta.ele('wp:meta_key', {}, 'cabaca_source_url');
+        postMeta.ele('wp:meta_value', {}, item.link);
+
+        // featured image
+        if (item.cover) {
+            const media = injectMediaAttachment(channel, item.cover, index, currentDate, title);
+
+            postMeta = xmlItem.ele('wp:postmeta');
+            postMeta.ele('wp:meta_key', {}, '_thumbnail_id');
+            postMeta.ele('wp:meta_value', {}, media);
+        }
     });
 
     return root.end({ pretty: true });
 }
+
+function createSlug(stringValue) {
+    return stringValue
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+}
+
+function formatDate(date) {
+    date = new Date(date);
+
+    return date.getFullYear() + '-' +
+        String(date.getMonth() + 1).padStart(2, '0') + '-' +
+        String(date.getDate()).padStart(2, '0') + ' ' +
+        String(date.getHours()).padStart(2, '0') + ':' +
+        String(date.getMinutes()).padStart(2, '0') + ':' +
+        String(date.getSeconds()).padStart(2, '0');
+}
+
+function bookTypeValue(rawValue) {
+    switch (rawValue) {
+        case 'book':
+            return {
+                slug: 'novel',
+                label: 'Novel'
+            };
+        default:
+            return {
+                slug: 'uncategorized',
+                label: 'Uncategorized'
+            };
+            break;
+    }
+}
+
+function injectMediaAttachment(xmlNode, mediaUrl, itemIndex, currentDate, postTitle) {
+    currentDate = new Date(currentDate);
+
+    const yearFolder = currentDate.getFullYear();
+    const monthFolder = String(currentDate.getMonth() + 1).padStart(2, '0');
+
+    const mediaName = createSlug(postTitle);
+
+    // Get Image extension
+    const decodedUrl = decodeURIComponent(mediaUrl);
+    const fileName = decodedUrl.split('/').pop().split('?')[0];
+    const fileExtension = fileName.split('.').pop();
+
+    // Directory uploads
+    const dirUploads = `${yearFolder}/${monthFolder}/${mediaName}.${fileExtension}`;
+    const totalChar = dirUploads.length;
+
+    const mediaId = (itemIndex + mediaIndex + 1);
+
+    const mediaAttachment = xmlNode.ele('item');
+
+    mediaAttachment.ele('title', {}, postTitle);
+    mediaAttachment.ele('link', {}, mediaUrl);
+    mediaAttachment.ele('wp:post_id', {}, mediaId);
+
+    mediaAttachment.ele('wp:post_type', {}, 'attachment');
+    mediaAttachment.ele('wp:post_parent', {}, (itemIndex + postIndex + 1));
+    mediaAttachment.ele('wp:attachment_url', {}, `https://mamikos.com/info/wp-content/uploads/${dirUploads}`);
+
+    const fileTypeMeta = mediaAttachment.ele('wp:postmeta');
+    fileTypeMeta.ele('wp:meta_key', {}, '_wp_attached_file');
+    fileTypeMeta.ele('wp:meta_value', {}, `${dirUploads}`);
+
+    const imageMeta = mediaAttachment.ele('wp:postmeta');
+    imageMeta.ele('wp:meta_key', {}, '_wp_attachment_metadata');
+    imageMeta.ele('wp:meta_value', {}, `
+        a:5:{s:5:"width";i:720;s:6:"height";i:720;s:4:"file";s:${totalChar}:"${dirUploads}";s:5:"sizes";a:0:{}s:10:"image_meta";a:0:{}}
+    `);
+
+    return mediaId;
+}
+
 
 // Main function to convert all JSON files to XML format
 async function convertAllJsonToXml() {
