@@ -145,12 +145,12 @@ function injectMediaAttachment(xmlNode, mediaUrl, itemIndex, currentDate, postTi
     const mediaAttachment = xmlNode.ele('item');
 
     mediaAttachment.ele('title', {}, postTitle);
-    mediaAttachment.ele('link', {}, mediaUrl);
+    mediaAttachment.ele('link', {}, `https://mamikos.com/info/wp-content/uploads/${dirUploads}`);
     mediaAttachment.ele('wp:post_id', {}, mediaId);
 
     mediaAttachment.ele('wp:post_type', {}, 'attachment');
     mediaAttachment.ele('wp:post_parent', {}, (itemIndex + postIndex + 1));
-    mediaAttachment.ele('wp:attachment_url', {}, `https://mamikos.com/info/wp-content/uploads/${dirUploads}`);
+    mediaAttachment.ele('wp:attachment_url', {}, cleaningMediaUrl(mediaUrl));
 
     const fileTypeMeta = mediaAttachment.ele('wp:postmeta');
     fileTypeMeta.ele('wp:meta_key', {}, '_wp_attached_file');
@@ -163,6 +163,21 @@ function injectMediaAttachment(xmlNode, mediaUrl, itemIndex, currentDate, postTi
     `);
 
     return mediaId;
+}
+
+function cleaningMediaUrl(mediaUrl) {
+    let cleanMediaUrl = mediaUrl.replace(/\?(?=\w+=)/g, (match, offset) => offset === mediaUrl.indexOf('?') ? '?' : '&');
+    cleanMediaUrl = decodeURIComponent(cleanMediaUrl);
+
+    const urlObj = new URL(cleanMediaUrl);
+
+    const params = new URLSearchParams(urlObj.search);
+
+    params.delete('download');
+
+    urlObj.search = params.toString();
+
+    return urlObj.toString();
 }
 
 
