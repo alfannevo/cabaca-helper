@@ -47,9 +47,9 @@ function convertToWpXml(jsonData) {
         xmlItem.ele('excerpt:encoded').cdata('');
         xmlItem.ele('wp:post_id', {}, (index + postIndex + 1));
         xmlItem.ele('wp:post_date').cdata(formatDate(currentDate));
-        xmlItem.ele('wp:post_date_gmt').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:post_date_gmt').cdata(formatDate(currentDate, 'GMT'));
         xmlItem.ele('wp:post_modified').cdata(formatDate(currentDate));
-        xmlItem.ele('wp:post_modified_gmt').cdata(formatDate(currentDate));
+        xmlItem.ele('wp:post_modified_gmt').cdata(formatDate(currentDate, 'GMT'));
         xmlItem.ele('wp:comment_status').cdata('closed');
         xmlItem.ele('wp:ping_status').cdata('closed');
         xmlItem.ele('wp:post_name').cdata(itemSlug);
@@ -96,8 +96,17 @@ function createSlug(stringValue) {
         .replace(/-+/g, '-');
 }
 
-function formatDate(date) {
+function formatDate(date, format = 'non-GMT') {
     date = new Date(date);
+
+    if (format === 'GMT') {
+        return date.getUTCFullYear() + '-' +
+            String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+            String(date.getUTCDate()).padStart(2, '0') + ' ' +
+            String(date.getUTCHours()).padStart(2, '0') + ':' +
+            String(date.getUTCMinutes()).padStart(2, '0') + ':' +
+            String(date.getUTCSeconds()).padStart(2, '0');
+    }
 
     return date.getFullYear() + '-' +
         String(date.getMonth() + 1).padStart(2, '0') + '-' +
