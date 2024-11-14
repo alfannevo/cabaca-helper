@@ -23,7 +23,7 @@ function convertToWpXml(jsonData) {
 
     jsonData.forEach((item, index) => {
         const title = item.title || 'No Title';
-        const writerName = item.writer.name || 'Unknown';
+        const writerName = item.writer || 'Unknown';
         const itemSlug = createSlug(title + '-' + writerName);
         const link = `https://mamikos.com/info/book/${itemSlug}`;
         const creator = 'admin';
