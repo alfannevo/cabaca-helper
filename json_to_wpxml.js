@@ -27,10 +27,17 @@ function convertToWpXml(jsonData) {
         const itemSlug = createSlug(title + '-' + writerName);
         const link = `https://mamikos.com/info/book/${itemSlug}`;
         const creator = 'admin';
-        let content = item.chapters[0].content;
+        let content = '';
 
-        if (item.chapters[0].title) {
-            content = `<h2 class="cabaca-chapter-title">${item.chapters[0].title}</h2>` + content;
+        if (item.chapters && item.chapters.length > 0) {
+            item.chapters.forEach((value, key) => {
+                if (key > 0) {
+                    content += '<!--nextpage-->';
+                }
+
+                content += `<h2 class="cabaca-chapter-title">${value.title}</h2>`;
+                content += value.content;
+            });
         }
 
         const currentDate = Date.now();
