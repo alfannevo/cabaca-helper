@@ -60,7 +60,7 @@ function convertToWpXml(jsonData) {
         xmlItem.ele('wp:comment_status').cdata('closed');
         xmlItem.ele('wp:ping_status').cdata('closed');
         xmlItem.ele('wp:post_name').cdata(itemSlug);
-        xmlItem.ele('wp:status').cdata('publish');
+        xmlItem.ele('wp:status').cdata('draft');
         xmlItem.ele('wp:post_parent', {}, 0);
         xmlItem.ele('wp:menu_order', {}, 0);
         xmlItem.ele('wp:post_type').cdata('cb_book');
